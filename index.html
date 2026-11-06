@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shadow Triangles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one wide outdoor "scene" across the top, then a measurement table and a
+   nested-triangle graph side by side (stacked on phones). Readable on a classroom projector. */
+:root {
+  --bg: #eaf0f3;
+  --surface: #ffffff;
+  --ink: #142430;
+  --muted: #566b78;
+  --line: #ccd9e0;
+  --accent: #d98a00;        /* sun amber, used for controls */
+  --accent-ink: #ffffff;
+  --sky-top: #8ccbef;
+  --sky-bottom: #e2f3fb;
+  --ground: #86b862;
+  --ground-edge: #5d8f3f;
+  --shadow: rgba(22, 38, 20, 0.55);
+  --sun: #ffb21f;
+  --ray: rgba(232, 150, 0, 0.42);
+  --halo: rgba(255, 255, 255, 0.85);
+  --c1: #d9482b;
+  --c2: #138a7c;
+  --c3: #7552a8;
+  --c4: #2161c9;
+  --good: #1f8a4c;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1920; --surface: #15242d; --ink: #e2ecf1; --muted: #93a8b4; --line: #284050;
+    --accent: #f0a72a; --accent-ink: #1a1200;
+    --sky-top: #24496b; --sky-bottom: #5f89a6; --ground: #4b7239; --ground-edge: #6f9a52;
+    --shadow: rgba(4, 10, 4, 0.6); --sun: #ffc24a; --ray: rgba(255, 196, 80, 0.38); --halo: rgba(14, 25, 32, 0.8);
+    --c1: #ff7a5c; --c2: #3cc7b4; --c3: #b597ea; --c4: #6ea2ff; --good: #5fd08f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1920; --surface: #15242d; --ink: #e2ecf1; --muted: #93a8b4; --line: #284050;
+  --accent: #f0a72a; --accent-ink: #1a1200;
+  --sky-top: #24496b; --sky-bottom: #5f89a6; --ground: #4b7239; --ground-edge: #6f9a52;
+  --shadow: rgba(4, 10, 4, 0.6); --sun: #ffc24a; --ray: rgba(255, 196, 80, 0.38); --halo: rgba(14, 25, 32, 0.8);
+  --c1: #ff7a5c; --c2: #3cc7b4; --c3: #b597ea; --c4: #6ea2ff; --good: #5fd08f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+header { display: grid; gap: 6px; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin: 0;
+  text-wrap: balance;
+}
+.eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Controls bar */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.sun-control { display: flex; align-items: center; gap: 10px; flex: 1 1 320px; min-width: 0; }
+.sun-control label { font-weight: 700; white-space: nowrap; }
+.sun-control input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+.theta {
+  font-family: var(--font-data);
+  font-weight: 600;
+  font-size: 1.1rem;
+  min-width: 3.6ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+button, .chip {
+  font: inherit;
+  font-size: 0.92rem;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button:hover, .chip:hover { border-color: var(--accent); }
+button:focus-visible, .chip:focus-within, input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.chip input { accent-color: var(--accent); margin: 0; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+
+/* Scene */
+.scene {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--sky-bottom);
+}
+.scene canvas { display: block; width: 100%; touch-action: none; }
+.hint {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: var(--halo);
+  padding: 4px 10px;
+  border-radius: 8px;
+  max-width: calc(100% - 24px);
+}
+
+/* Lower panels */
+.lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.panel p { margin: 0; color: var(--muted); }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 400px; }
+th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+}
+td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+td.num, th.num { text-align: right; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ratio { font-weight: 600; font-size: 1.05rem; }
+.who { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.who input {
+  font: inherit;
+  width: 9.5em;
+  max-width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.who input:hover { border-color: var(--line); }
+.hcell { display: flex; align-items: center; gap: 8px; }
+.hcell input[type="range"] { width: 100px; flex: 1 1 auto; min-width: 60px; }
+@media (max-width: 560px) {
+  .hcell input[type="range"] { display: none; }
+  .who input { width: 7em; }
+  .hint { display: none; }
+}
+.hcell .num { min-width: 5.2ch; text-align: right; }
+
+.verdict {
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+.verdict strong { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; }
+.verdict .num { color: var(--ink); }
+.verdict small { color: var(--muted); }
+
+.why { color: var(--muted); font-size: 0.92rem; }
+.why ul { margin: 6px 0 0; padding-left: 1.2em; display: grid; gap: 2px; }
+
+.solve {
+  border: 2px dashed var(--c4);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+.solve .eq { font-family: var(--font-data); font-size: 0.98rem; overflow-x: auto; white-space: nowrap; }
+.solve .eq div { padding-block: 2px; }
+.solve .result { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.graph canvas { display: block; width: 100%; }
+.legend { font-size: 0.9rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Similar triangles · Geometry</span>
+    <h1>Shadow Triangles</h1>
+    <p class="lede">The sun is so far away that its rays arrive parallel. Every object's height, its shadow, and the ray that grazes its top form a right triangle, and every one of those triangles has the same angle at the shadow's tip. Drag the sun, the people, or the handles on top of their heads.</p>
+  </header>
+
+  <div class="controls">
+    <div class="sun-control">
+      <label for="sunAngle">Sun angle θ</label>
+      <input type="range" id="sunAngle" min="15" max="80" step="1" value="35">
+      <span class="theta" id="thetaOut">35°</span>
+      <button id="playBtn" type="button" aria-pressed="false">▶ Run the day</button>
+    </div>
+    <div class="toggles">
+      <label class="chip"><input type="checkbox" id="measureToggle"> Real measuring error</label>
+      <label class="chip"><input type="checkbox" id="solveToggle"> Mystery flagpole</label>
+      <label class="chip"><input type="checkbox" id="labelsToggle" checked> Labels</label>
+      <button id="unitsBtn" type="button">Units: feet</button>
+    </div>
+  </div>
+
+  <div class="scene" id="sceneWrap">
+    <canvas id="scene" aria-label="Outdoor scene with the sun, parallel rays, three students and a flagpole casting shadows. Each forms a right triangle."></canvas>
+    <div class="hint" id="hint">Drag the sun · drag a ○ handle to change height · drag a body to move it</div>
+  </div>
+
+  <div class="lower">
+    <section class="panel" aria-labelledby="tblTitle">
+      <h2 id="tblTitle">The measurements</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Object</th>
+              <th id="hHead">Height</th>
+              <th class="num" id="sHead">Shadow</th>
+              <th class="num">Height ÷ Shadow</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="verdict" id="verdict"></div>
+      <div class="why" id="why" hidden>
+        <strong>Why aren't the ratios identical?</strong> Every measurement gets rounded to the nearest <span id="roundUnit">inch</span>, and real measuring adds error:
+        <ul>
+          <li>The edge of a shadow is fuzzy (the sun is a disk, not a point), so it's hard to say exactly where it ends.</li>
+          <li>People slouch, stand on tiptoe, or wear shoes.</li>
+          <li>The ground isn't perfectly flat, and the tape may not be perfectly straight.</li>
+          <li>The sun keeps moving while you measure.</li>
+        </ul>
+        <div class="row" style="margin-top:8px"><button id="remeasureBtn" type="button">Measure again</button></div>
+      </div>
+      <div class="solve" id="solveCard" hidden></div>
+    </section>
+
+    <section class="panel graph" aria-labelledby="graphTitle">
+      <h2 id="graphTitle">All the triangles, stacked</h2>
+      <p class="legend">Each triangle is slid over so its shadow tip sits at the same corner. They share that angle θ, so the tops all land on one straight line. Bigger triangles are just scaled-up copies of smaller ones.</p>
+      <canvas id="graph" aria-label="Graph of height versus shadow length. All triangles share the corner at the origin and their tops lie on one line."></canvas>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DEG = Math.PI / 180;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const state = {
+    theta: 35,
+    units: "imperial",
+    measuring: false,
+    solve: false,
+    revealed: false,
+    labels: true,
+    playing: false,
+    objs: [
+      { name: "Student 1", kind: "person", x: 3,  h: 5 + 2 / 12,  color: "--c1", min: 3, max: 7 },
+      { name: "Student 2", kind: "person", x: 11, h: 5 + 9 / 12,  color: "--c2", min: 3, max: 7 },
+      { name: "Student 3", kind: "person", x: 19, h: 4 + 10 / 12, color: "--c3", min: 3, max: 7 },
+      { name: "Flagpole",  kind: "pole",   x: 28, h: 20,          color: "--c4", min: 8, max: 30 },
+    ],
+  };
+  const reroll = () => state.objs.forEach(o => { o.nh = Math.random() * 2 - 1; o.ns = Math.random() * 2 - 1; });
+  reroll();
+
+  // ---------- helpers ----------
+  const tanT = () => Math.tan(state.theta * DEG);
+  const shadowOf = o => o.h / tanT();
+  const unitFt = () => state.units === "imperial" ? 1 / 12 : 0.0328084; // 1 inch or 1 cm, in feet
+  function measured(o) {
+    const s = shadowOf(o);
+    if (!state.measuring) return { h: o.h, s };
+    const u = unitFt();
+    // heights: ±0.75 in; shadow tips are fuzzy: ±4 in
+    const hm = Math.round((o.h + o.nh * 0.75 / 12) / u) * u;
+    const sm = Math.round((s + o.ns * 4 / 12) / u) * u;
+    return { h: hm, s: sm };
+  }
+  function fmt(ft) {
+    if (state.units === "imperial") {
+      const tot = Math.round(ft * 12);
+      return `${Math.floor(tot / 12)}′ ${tot % 12}″`;
+    }
+    const m = ft * 0.3048;
+    return m < 10 ? `${m.toFixed(2)} m` : `${m.toFixed(1)} m`;
+  }
+  const r3 = v => v.toFixed(3);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const isHidden = o => state.solve && o.kind === "pole" && !state.revealed;
+
+  // ---------- theme tokens ----------
+  let T = {};
+  function readTokens() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = n => cs.getPropertyValue(n).trim();
+    T = {
+      skyTop: g("--sky-top"), skyBottom: g("--sky-bottom"), ground: g("--ground"), groundEdge: g("--ground-edge"),
+      shadow: g("--shadow"), sun: g("--sun"), ray: g("--ray"), halo: g("--halo"), ink: g("--ink"),
+      muted: g("--muted"), line: g("--line"), surface: g("--surface"), good: g("--good"),
+    };
+    state.objs.forEach(o => { o.col = g(o.color); });
+  }
+  readTokens();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readTokens);
+  new MutationObserver(readTokens).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+
+  const BODY_FONT = getComputedStyle(document.body).fontFamily;
+  const DATA_FONT = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+
+  // ---------- canvas setup ----------
+  function fitCanvas(canvas, ratio, minH, maxH) {
+    const w = canvas.parentElement.clientWidth;
+    const h = clamp(Math.round(w * ratio), minH, maxH);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.height = h + "px";
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+  const sceneEl = document.getElementById("scene");
+  const graphEl = document.getElementById("graph");
+  let S = null, G = null;
+  function resize() {
+    S = fitCanvas(sceneEl, 0.5, 340, 580);
+    G = fitCanvas(graphEl, 0.78, 280, 520);
+  }
+  new ResizeObserver(resize).observe(document.getElementById("sceneWrap"));
+  resize();
+
+  // ---------- scene geometry ----------
+  const GROUND_BAND = 104;
+  const LEFT = 28;
+  let scale = null;      // px per foot (eased)
+  let frozenScale = null;
+  function targetScale() {
+    const groundY = S.h - GROUND_BAND;
+    let maxX = 0, maxH = 0;
+    state.objs.forEach(o => { maxX = Math.max(maxX, o.x + shadowOf(o)); maxH = Math.max(maxH, o.h); });
+    return Math.min((S.w - LEFT - 24) / (maxX + 1), (groundY - 48) / maxH);
+  }
+  const geo = () => {
+    const groundY = S.h - GROUND_BAND;
+    const th = state.theta * DEG;
+    const gx0 = S.w * 0.62;
+    const R = Math.min((gx0 - 40) / Math.cos(th), (groundY - 40) / Math.sin(th));
+    return { groundY, th, sunX: gx0 - Math.cos(th) * R, sunY: groundY - Math.sin(th) * R, gx0 };
+  };
+  const X = ft => LEFT + ft * scale;
+
+  // ---------- drawing: scene ----------
+  let dashPhase = 0, hover = null;
+
+  function drawPerson(ctx, bx, gy, hp, col) {
+    const r = hp * 0.075;
+    const headCy = gy - hp + r;
+    const shoulderY = headCy + r * 1.35;
+    const hipY = gy - hp * 0.47;
+    const bw = Math.max(4, hp * 0.17);
+    ctx.fillStyle = col;
+    ctx.strokeStyle = col;
+    ctx.lineCap = "round";
+    // legs
+    ctx.lineWidth = Math.max(2.5, hp * 0.065);
+    ctx.beginPath();
+    ctx.moveTo(bx - bw * 0.25, hipY); ctx.lineTo(bx - bw * 0.32, gy - 1);
+    ctx.moveTo(bx + bw * 0.25, hipY); ctx.lineTo(bx + bw * 0.32, gy - 1);
+    ctx.stroke();
+    // arms
+    ctx.lineWidth = Math.max(2, hp * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(bx - bw * 0.5, shoulderY + 2); ctx.lineTo(bx - bw * 0.85, hipY + hp * 0.04);
+    ctx.moveTo(bx + bw * 0.5, shoulderY + 2); ctx.lineTo(bx + bw * 0.85, hipY + hp * 0.04);
+    ctx.stroke();
+    // torso
+    const tr = bw * 0.35;
+    ctx.beginPath();
+    ctx.roundRect(bx - bw / 2, shoulderY, bw, hipY - shoulderY + 2, [tr, tr, 3, 3]);
+    ctx.fill();
+    // head
+    ctx.beginPath();
+    ctx.arc(bx, headCy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawPole(ctx, bx, gy, hp, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(bx - 2.5, gy - hp, 5, hp);
+    ctx.beginPath(); ctx.arc(bx, gy - hp, 4.5, 0, Math.PI * 2); ctx.fill();
+    // flag
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    const fy = gy - hp + 8, fw = Math.min(46, hp * 0.32), fh = fw * 0.62;
+    ctx.moveTo(bx + 2, fy);
+    ctx.quadraticCurveTo(bx + fw * 0.5, fy - 4, bx + fw, fy + 2);
+    ctx.lineTo(bx + fw, fy + fh + 2);
+    ctx.quadraticCurveTo(bx + fw * 0.5, fy + fh - 4, bx + 2, fy + fh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // base
+    ctx.fillRect(bx - 9, gy - 4, 18, 4);
+  }
+  function label(ctx, text, x, y, col, align = "center", size = 13, font = DATA_FONT) {
+    ctx.font = `600 ${size}px ${font}`;
+    ctx.textAlign = align;
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = T.halo;
+    ctx.lineJoin = "round";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = col;
+    ctx.fillText(text, x, y);
+  }
+
+  function drawScene() {
+    const ctx = S.ctx, W = S.w, H = S.h;
+    const { groundY, th, sunX, sunY } = geo();
+    const tan = Math.tan(th), cos = Math.cos(th), sin = Math.sin(th);
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, T.skyTop); sky.addColorStop(1, T.skyBottom);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, groundY);
+
+    // sun
+    const glow = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 70);
+    glow.addColorStop(0, T.sun); glow.addColorStop(1, "rgba(255,190,40,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sunX, sunY, 70, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = T.sun; ctx.beginPath(); ctx.arc(sunX, sunY, hover === "sun" ? 26 : 22, 0, Math.PI * 2); ctx.fill();
+
+    const objs = state.objs.map(o => {
+      const bx = X(o.x), hp = o.h * scale, sp = hp / tan;
+      return { o, bx, hp, sp, top: groundY - hp, tip: bx + sp };
+    });
+
+    // background rays (stop where they hit an object, so the shadow is where light never lands)
+    const spacing = 30;
+    const dgx = spacing / sin;
+    const far = groundY / tan;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, W, groundY); ctx.clip();
+    ctx.strokeStyle = T.ray;
+    ctx.lineWidth = 1.3;
+    ctx.setLineDash([10, 8]);
+    ctx.lineDashOffset = -dashPhase;
+    const k0 = Math.floor((0 - S.w * 0.62) / dgx), k1 = Math.ceil((W + far - S.w * 0.62) / dgx);
+    for (let k = k0; k <= k1; k++) {
+      const gx = S.w * 0.62 + k * dgx + 0.5;
+      // start: back along the ray until we leave the canvas
+      const t = Math.min(gx / cos, groundY / sin);
+      const sx = gx - cos * t, sy = groundY - sin * t;
+      // don't draw rays that would start "behind" the sun
+      let ex = gx, ey = groundY, best = Infinity;
+      for (const b of objs) {
+        if (b.bx < gx && gx < b.tip && b.bx < best) { best = b.bx; ex = b.bx; ey = groundY - (gx - b.bx) * tan; }
+      }
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    }
+    ctx.restore();
+
+    // ground
+    ctx.fillStyle = T.ground; ctx.fillRect(0, groundY, W, H - groundY);
+    ctx.fillStyle = T.groundEdge; ctx.fillRect(0, groundY, W, 2);
+
+    // shadows on the ground
+    for (const b of objs) {
+      ctx.fillStyle = T.shadow;
+      ctx.beginPath();
+      ctx.moveTo(b.bx - 6, groundY);
+      ctx.lineTo(b.tip, groundY);
+      ctx.lineTo(b.tip - 4, groundY + 9);
+      ctx.lineTo(b.bx - 6, groundY + 9);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // triangles (behind the figures)
+    for (const b of objs) {
+      ctx.fillStyle = b.o.col;
+      ctx.globalAlpha = 0.15;
+      ctx.beginPath(); ctx.moveTo(b.bx, groundY); ctx.lineTo(b.bx, b.top); ctx.lineTo(b.tip, groundY); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      // the grazing ray: faint from the sky edge, bold along the hypotenuse
+      const t = Math.min(b.bx / cos, b.top / sin);
+      ctx.strokeStyle = b.o.col;
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.moveTo(b.bx - cos * t, b.top - sin * t); ctx.lineTo(b.bx, b.top); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(b.bx, b.top); ctx.lineTo(b.tip, groundY); ctx.stroke();
+      // height & base edges, dashed
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(b.bx, groundY); ctx.lineTo(b.tip, groundY); ctx.stroke();
+      ctx.setLineDash([]);
+      // right angle mark
+      const q = 9;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(b.bx + q, groundY); ctx.lineTo(b.bx + q, groundY - q); ctx.lineTo(b.bx, groundY - q); ctx.stroke();
+      // angle at the tip
+      const ar = 24;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(b.tip, groundY, ar, Math.PI, Math.PI + th); ctx.stroke();
+    }
+
+    // figures
+    for (const b of objs) {
+      if (b.o.kind === "pole") drawPole(ctx, b.bx, groundY, b.hp, b.o.col);
+      else drawPerson(ctx, b.bx, groundY, b.hp, b.o.col);
+    }
+    // top handles
+    objs.forEach((b, i) => {
+      const hv = hover === "h" + i;
+      ctx.beginPath(); ctx.arc(b.bx, b.top, hv ? 9 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = T.surface; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = b.o.col; ctx.stroke();
+    });
+
+    // θ label on the triangle whose tip is furthest right (least crowded)
+    const last = objs.reduce((a, b) => (b.tip > a.tip ? b : a));
+    label(ctx, `θ = ${state.theta}°`, last.tip - 32 - 26, groundY - 12, T.ink, "right", 13);
+
+    // labels: heights & shadow dimension lines
+    if (state.labels) {
+      objs.forEach((b, i) => {
+        const m = measured(b.o);
+        const hText = isHidden(b.o) ? "h = ?" : fmt(m.h);
+        const hy = b.top + Math.min(b.hp * 0.5, 60) + 6;
+        if (b.bx > 64) label(ctx, hText, b.bx - 10, hy, b.o.col, "right", 13);
+        else label(ctx, hText, b.bx + 14, hy - 18, b.o.col, "left", 13);
+        const y = groundY + 26 + i * 18;
+        ctx.strokeStyle = b.o.col; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.bx, y); ctx.lineTo(b.tip, y);
+        ctx.moveTo(b.bx, y - 5); ctx.lineTo(b.bx, y + 5);
+        ctx.moveTo(b.tip, y - 5); ctx.lineTo(b.tip, y + 5);
+        ctx.stroke();
+        const mid = (b.bx + Math.min(b.tip, W - 4)) / 2;
+        label(ctx, fmt(m.s), clamp(mid, 40, W - 40), y, b.o.col, "center", 12);
+      });
+    }
+
+    // sun ray caption near the sun
+    label(ctx, "parallel sun rays", sunX + 30, sunY - 2, T.ink, "left", 13, BODY_FONT);
+  }
+
+  // ---------- drawing: stacked graph ----------
+  function niceStep(range, target) {
+    const raw = range / target;
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p;
+    return 10 * p;
+  }
+  function drawGraph() {
+    const ctx = G.ctx, W = G.w, H = G.h;
+    ctx.clearRect(0, 0, W, H);
+    const ml = 54, mb = 40, mt = 14, mr = 16;
+    const pw = W - ml - mr, ph = H - mt - mb;
+    const data = state.objs.map(o => ({ o, m: measured(o) }));
+    // display units for axes
+    const toU = state.units === "imperial" ? v => v : v => v * 0.3048;
+    const uName = state.units === "imperial" ? "ft" : "m";
+    let maxS = 0, maxH = 0;
+    data.forEach(d => { maxS = Math.max(maxS, d.m.s, shadowOf(d.o)); maxH = Math.max(maxH, d.m.h, d.o.h); });
+    maxS *= 1.06; maxH *= 1.08;
+    const sc = Math.min(pw / maxS, ph / maxH); // same scale on both axes, so angles are true
+    const ox = ml, oy = mt + ph;
+    const px = s => ox + s * sc, py = h => oy - h * sc;
+    const xEnd = ml + pw, yEnd = mt;
+
+    // grid
+    const stepU = niceStep(Math.max(toU(pw / sc), toU(ph / sc)), 7);
+    const stepFt = state.units === "imperial" ? stepU : stepU / 0.3048;
+    ctx.strokeStyle = T.line; ctx.lineWidth = 1;
+    ctx.font = `12px ${DATA_FONT}`; ctx.fillStyle = T.muted;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let v = 0; px(v) <= xEnd + 0.5; v += stepFt) {
+      ctx.beginPath(); ctx.moveTo(px(v), oy); ctx.lineTo(px(v), yEnd); ctx.stroke();
+      ctx.fillText(+toU(v).toFixed(2) + "", px(v), oy + 6);
+    }
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (let v = 0; py(v) >= yEnd - 0.5; v += stepFt) {
+      ctx.beginPath(); ctx.moveTo(ox, py(v)); ctx.lineTo(xEnd, py(v)); ctx.stroke();
+      ctx.fillText(+toU(v).toFixed(2) + "", ox - 8, py(v));
+    }
+    ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(ox, yEnd); ctx.lineTo(ox, oy); ctx.lineTo(xEnd, oy); ctx.stroke();
+    ctx.font = `600 12px ${BODY_FONT}`; ctx.fillStyle = T.muted;
+    ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+    ctx.fillText(`shadow length (${uName}) →`, xEnd, H - 2);
+    ctx.save(); ctx.translate(14, mt); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(`height (${uName}) →`, 0, 0); ctx.restore();
+
+    // triangles, biggest first
+    const visible = data.filter(d => !isHidden(d.o)).sort((a, b) => b.m.s - a.m.s);
+    for (const d of visible) {
+      ctx.fillStyle = d.o.col; ctx.globalAlpha = 0.13;
+      ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(d.m.s), py(0)); ctx.lineTo(px(d.m.s), py(d.m.h)); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = d.o.col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(d.m.s), py(d.m.h)); ctx.lineTo(px(d.m.s), py(0)); ctx.stroke();
+    }
+    // the shared line: height = tanθ × shadow
+    const t = tanT();
+    const sMax = Math.min(maxS, maxH / t);
+    ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(sMax), py(sMax * t)); ctx.stroke(); ctx.setLineDash([]);
+    // angle at origin
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px(0), py(0), 30, -state.theta * DEG, 0); ctx.stroke();
+    label(ctx, "θ", px(0) + 40, py(0) - 10, T.ink, "left", 13);
+
+    // points & labels
+    for (const d of visible) {
+      ctx.fillStyle = d.o.col; ctx.beginPath(); ctx.arc(px(d.m.s), py(d.m.h), 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = T.surface; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    // legend (top-left of the plot) instead of point labels, which collide when points are close
+    data.forEach((d, i) => {
+      const lx = ox + 14, ly = yEnd + 12 + i * 18;
+      ctx.fillStyle = d.o.col; ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI * 2); ctx.fill();
+      label(ctx, d.o.name + (isHidden(d.o) ? " (height unknown)" : ""), lx + 10, ly, T.ink, "left", 12, BODY_FONT);
+    });
+    // mystery pole: dashed line up to the estimate
+    if (state.solve && !state.revealed) {
+      const pole = data.find(d => d.o.kind === "pole");
+      const est = estimate();
+      ctx.strokeStyle = pole.o.col; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(px(pole.m.s), py(0)); ctx.lineTo(px(pole.m.s), py(est.h)); ctx.stroke(); ctx.setLineDash([]);
+      label(ctx, "?", px(pole.m.s) + 8, py(est.h * 0.5), pole.o.col, "left", 16);
+    }
+  }
+
+  // ---------- mystery flagpole estimate ----------
+  function estimate() {
+    const students = state.objs.filter(o => o.kind === "person").map(o => { const m = measured(o); return m.h / m.s; });
+    const avg = students.reduce((a, b) => a + b, 0) / students.length;
+    const pole = state.objs.find(o => o.kind === "pole");
+    const ps = measured(pole).s;
+    return { avg, ratios: students, s: ps, h: ps * avg, actual: pole.h };
+  }
+
+  // ---------- table & text ----------
+  const rowsEl = document.getElementById("rows");
+  const rowRefs = [];
+  state.objs.forEach((o, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><div class="who"><span class="swatch"></span><input type="text" id="name${i}" aria-label="Name"></div></td>
+      <td><div class="hcell"><input type="range" id="height${i}" aria-label="Height"><span class="num"></span></div></td>
+      <td class="num"></td>
+      <td class="num ratio"></td>`;
+    rowsEl.appendChild(tr);
+    const [nameIn, hIn] = tr.querySelectorAll("input");
+    nameIn.value = o.name;
+    nameIn.addEventListener("input", () => { o.name = nameIn.value || "?"; update(); });
+    hIn.addEventListener("input", () => { o.h = +hIn.value; update(false); });
+    tr.querySelector(".swatch").style.background = `var(${o.color})`;
+    hIn.style.accentColor = `var(${o.color})`;
+    const cells = tr.querySelectorAll("td");
+    rowRefs.push({ hIn, hOut: cells[1].querySelector(".num"), sOut: cells[2], rOut: cells[3] });
+  });
+  function syncSliders() {
+    const u = unitFt();
+    state.objs.forEach((o, i) => {
+      const r = rowRefs[i].hIn;
+      r.min = o.min; r.max = o.max; r.step = u; r.value = o.h;
+    });
+  }
+
+  function updateText() {
+    const t = tanT();
+    state.objs.forEach((o, i) => {
+      const m = measured(o), ref = rowRefs[i];
+      const hide = isHidden(o);
+      ref.hOut.textContent = hide ? "?" : fmt(m.h);
+      ref.hIn.disabled = hide;
+      ref.sOut.textContent = fmt(m.s);
+      ref.rOut.textContent = hide ? "?" : r3(m.h / m.s);
+    });
+
+    const v = document.getElementById("verdict");
+    if (!state.measuring) {
+      v.innerHTML = `<strong>Every ratio is <span class="num">${r3(t)}</span>.</strong>
+        <span>At a sun angle of ${state.theta}°, each object's height is <span class="num">${r3(t)}</span> × its shadow. Change a height and its shadow changes by the same factor.</span>
+        <small>That shared number is tan(${state.theta}°). The triangles are similar because they share the right angle and the angle θ (AA similarity).</small>`;
+    } else {
+      const rs = state.objs.filter(o => !isHidden(o)).map(o => { const m = measured(o); return m.h / m.s; });
+      const lo = Math.min(...rs), hi = Math.max(...rs);
+      const pct = ((hi - lo) / t * 100).toFixed(1);
+      v.innerHTML = `<strong>The ratios are close, not identical.</strong>
+        <span>They range from <span class="num">${r3(lo)}</span> to <span class="num">${r3(hi)}</span>, a spread of ${pct}% around the true value <span class="num">${r3(t)}</span>.</span>`;
+    }
+    document.getElementById("why").hidden = !state.measuring;
+    document.getElementById("roundUnit").textContent = state.units === "imperial" ? "inch" : "centimeter";
+
+    const card = document.getElementById("solveCard");
+    card.hidden = !state.solve;
+    if (state.solve) {
+      const e = estimate();
+      const pole = state.objs.find(o => o.kind === "pole");
+      const names = state.objs.filter(o => o.kind === "person").map(o => o.name);
+      const err = e.h - e.actual;
+      card.innerHTML = `
+        <h2>How tall is the ${pole.name.toLowerCase()}?</h2>
+        <p>We can't reach the top, but we can measure its shadow: <strong class="num">${fmt(e.s)}</strong>. The triangles are similar, so the ${pole.name.toLowerCase()} has the same height-to-shadow ratio as the students.</p>
+        <div class="eq">
+          <div>average student ratio = (${e.ratios.map(r3).join(" + ")}) ÷ 3 = ${r3(e.avg)}</div>
+          <div>height ÷ ${fmt(e.s)} = ${r3(e.avg)}</div>
+          <div>height = ${fmt(e.s)} × ${r3(e.avg)}</div>
+        </div>
+        <div class="result">≈ ${fmt(e.h)}</div>
+        ${state.revealed ? `<p>Actual height: <strong class="num">${fmt(e.actual)}</strong>. ${Math.abs(err) < unitFt() ? "Spot on." : `Off by ${fmt(Math.abs(err))} (${(Math.abs(err) / e.actual * 100).toFixed(1)}%).`}</p>` : ""}
+        <div class="row"><button type="button" id="revealBtn" class="${state.revealed ? "" : "primary"}">${state.revealed ? "Hide the answer" : "Reveal actual height"}</button></div>`;
+      card.querySelector("#revealBtn").addEventListener("click", () => { state.revealed = !state.revealed; update(); });
+      void names;
+    }
+  }
+
+  function update(sliders = true) {
+    document.getElementById("thetaOut").textContent = state.theta + "°";
+    if (sliders) syncSliders();
+    updateText();
+  }
+
+  // ---------- controls ----------
+  const sunIn = document.getElementById("sunAngle");
+  sunIn.addEventListener("input", () => { state.theta = +sunIn.value; update(false); });
+  document.getElementById("measureToggle").addEventListener("change", e => { state.measuring = e.target.checked; update(); });
+  document.getElementById("solveToggle").addEventListener("change", e => { state.solve = e.target.checked; state.revealed = false; update(); });
+  document.getElementById("labelsToggle").addEventListener("change", e => { state.labels = e.target.checked; });
+  document.getElementById("remeasureBtn").addEventListener("click", () => { reroll(); update(); });
+  const unitsBtn = document.getElementById("unitsBtn");
+  unitsBtn.addEventListener("click", () => {
+    state.units = state.units === "imperial" ? "metric" : "imperial";
+    unitsBtn.textContent = state.units === "imperial" ? "Units: feet" : "Units: meters";
+    update();
+  });
+  const playBtn = document.getElementById("playBtn");
+  let playStart = 0;
+  playBtn.addEventListener("click", () => {
+    state.playing = !state.playing;
+    playBtn.setAttribute("aria-pressed", state.playing);
+    playBtn.textContent = state.playing ? "❚❚ Pause" : "▶ Run the day";
+    // start the sweep from the current angle
+    const f = (state.theta - 15) / 65;
+    playStart = performance.now() - Math.acos(1 - 2 * clamp(f, 0, 1)) / (Math.PI * 2) * 12000;
+  });
+
+  // ---------- scene dragging ----------
+  let drag = null;
+  function hitTest(px, py) {
+    const { groundY, sunX, sunY } = geo();
+    if (Math.hypot(px - sunX, py - sunY) < 30) return { type: "sun" };
+    for (let i = state.objs.length - 1; i >= 0; i--) {
+      const o = state.objs[i];
+      if (isHidden(o)) continue;
+      if (Math.hypot(px - X(o.x), py - (groundY - o.h * scale)) < 16) return { type: "h", i };
+    }
+    for (let i = state.objs.length - 1; i >= 0; i--) {
+      const o = state.objs[i], bx = X(o.x), w = Math.max(14, o.h * scale * 0.14);
+      if (Math.abs(px - bx) < w && py <= groundY + 4 && py >= groundY - o.h * scale) return { type: "x", i, off: (px - bx) / scale };
+    }
+    return null;
+  }
+  function pos(e) { const r = sceneEl.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  sceneEl.addEventListener("pointerdown", e => {
+    const [px, py] = pos(e);
+    const h = hitTest(px, py);
+    if (!h) return;
+    drag = h;
+    frozenScale = scale;
+    sceneEl.setPointerCapture(e.pointerId);
+    document.getElementById("hint").hidden = true;
+    if (h.type === "sun" && state.playing) playBtn.click();
+    e.preventDefault();
+  });
+  sceneEl.addEventListener("pointermove", e => {
+    const [px, py] = pos(e);
+    if (!drag) {
+      const h = hitTest(px, py);
+      hover = h ? (h.type === "sun" ? "sun" : h.type === "h" ? "h" + h.i : "x" + h.i) : null;
+      sceneEl.style.cursor = !h ? "default" : h.type === "sun" ? "grab" : h.type === "h" ? "ns-resize" : "ew-resize";
+      return;
+    }
+    const { groundY, gx0 } = geo();
+    if (drag.type === "sun") {
+      const a = Math.atan2(groundY - py, gx0 - px) / DEG;
+      state.theta = Math.round(clamp(a, 15, 80));
+      sunIn.value = state.theta;
+      update(false);
+    } else if (drag.type === "h") {
+      const o = state.objs[drag.i];
+      const u = unitFt();
+      o.h = clamp(Math.round(((groundY - py) / scale) / u) * u, o.min, o.max);
+      rowRefs[drag.i].hIn.value = o.h;
+      update(false);
+    } else {
+      const o = state.objs[drag.i];
+      o.x = clamp(Math.round((((px - LEFT) / scale) - drag.off) * 4) / 4, 0, 120);
+    }
+  });
+  const endDrag = () => { drag = null; frozenScale = null; };
+  sceneEl.addEventListener("pointerup", endDrag);
+  sceneEl.addEventListener("pointercancel", endDrag);
+  sceneEl.addEventListener("pointerleave", () => { if (!drag) hover = null; });
+
+  // ---------- main loop ----------
+  function frame(now) {
+    if (state.playing) {
+      const ph = ((now - playStart) / 12000) * Math.PI * 2;
+      const th = Math.round(15 + 65 * (1 - Math.cos(ph)) / 2);
+      if (th !== state.theta) { state.theta = th; sunIn.value = th; update(false); }
+    }
+    const tgt = frozenScale ?? targetScale();
+    scale = scale == null ? tgt : scale + (tgt - scale) * 0.12;
+    if (!reduceMotion) dashPhase = (dashPhase + 0.6) % 18;
+    drawScene();
+    drawGraph();
+    requestAnimationFrame(frame);
+  }
+  update();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
