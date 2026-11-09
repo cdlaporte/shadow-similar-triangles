@@ -32,6 +32,11 @@
   --c3: #7552a8;
   --c4: #2161c9;
   --good: #1f8a4c;
+  --warn: #b8510d;
+  --mirror: #d6eaf4;
+  --mirror-edge: #5f7c8c;
+  --tree: #2e6b35;
+  --trunk: #7a5232;
   --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -43,6 +48,7 @@
     --sky-top: #24496b; --sky-bottom: #5f89a6; --ground: #4b7239; --ground-edge: #6f9a52;
     --shadow: rgba(4, 10, 4, 0.6); --sun: #ffc24a; --ray: rgba(255, 196, 80, 0.38); --halo: rgba(14, 25, 32, 0.8);
     --c1: #ff7a5c; --c2: #3cc7b4; --c3: #b597ea; --c4: #6ea2ff; --good: #5fd08f;
+    --warn: #ffa05e; --mirror: #c2deec; --mirror-edge: #9cbccd; --tree: #2a5527; --trunk: #8a6240;
     color-scheme: dark;
   }
 }
@@ -52,6 +58,7 @@
   --sky-top: #24496b; --sky-bottom: #5f89a6; --ground: #4b7239; --ground-edge: #6f9a52;
   --shadow: rgba(4, 10, 4, 0.6); --sun: #ffc24a; --ray: rgba(255, 196, 80, 0.38); --halo: rgba(14, 25, 32, 0.8);
   --c1: #ff7a5c; --c2: #3cc7b4; --c3: #b597ea; --c4: #6ea2ff; --good: #5fd08f;
+    --warn: #ffa05e; --mirror: #c2deec; --mirror-edge: #9cbccd; --tree: #2a5527; --trunk: #8a6240;
   color-scheme: dark;
 }
 
@@ -246,11 +253,36 @@ td.num, th.num { text-align: right; }
 .graph canvas { display: block; width: 100%; }
 .legend { font-size: 0.9rem; color: var(--muted); }
 
+.view { display: grid; gap: 20px; }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 4px; }
+.tabs button { border: none; background: transparent; padding: 8px 20px; font-weight: 700; color: var(--muted); }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.status { border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; border: 2px solid var(--line); background: var(--bg); }
+.status strong { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; }
+.status[data-state="good"] { border-color: var(--good); }
+.status[data-state="good"] strong { color: var(--good); }
+.status[data-state="bad"] { border-color: var(--warn); }
+.status[data-state="bad"] strong { color: var(--warn); }
+.panel .warn-text { color: var(--warn); }
+table.narrow { min-width: 0; }
+.why strong { color: var(--ink); }
+
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="topbar">
+    <nav class="tabs" role="tablist" aria-label="Activities">
+      <button type="button" role="tab" id="tab-shadows" aria-controls="view-shadows" aria-selected="true">Shadows</button>
+      <button type="button" role="tab" id="tab-mirror" aria-controls="view-mirror" aria-selected="false">Mirror</button>
+    </nav>
+    <button id="unitsBtn" type="button">Units: feet</button>
+  </div>
+
+  <section class="view" id="view-shadows" role="tabpanel" aria-labelledby="tab-shadows">
   <header>
     <span class="eyebrow">Similar triangles · Geometry</span>
     <h1>Shadow Triangles</h1>
@@ -268,7 +300,6 @@ td.num, th.num { text-align: right; }
       <label class="chip"><input type="checkbox" id="measureToggle"> Real measuring error</label>
       <label class="chip"><input type="checkbox" id="solveToggle"> Mystery flagpole</label>
       <label class="chip"><input type="checkbox" id="labelsToggle" checked> Labels</label>
-      <button id="unitsBtn" type="button">Units: feet</button>
     </div>
   </div>
 
@@ -313,16 +344,75 @@ td.num, th.num { text-align: right; }
       <canvas id="graph" aria-label="Graph of height versus shadow length. All triangles share the corner at the origin and their tops lie on one line."></canvas>
     </section>
   </div>
+  </section>
+
+  <section class="view" id="view-mirror" role="tabpanel" aria-labelledby="tab-mirror" hidden>
+    <header>
+      <span class="eyebrow">Similar triangles · Geometry</span>
+      <h1>Mirror Triangles</h1>
+      <p class="lede">Lay a mirror flat on the ground. Light bounces off it at the same angle it arrives, so when you can see the top of something in the mirror, your eye, your feet and the mirror form a small triangle that is similar to the big one. Drag the people, the tree or the mirror until the top lines up, then solve for the height.</p>
+    </header>
+
+    <div class="controls">
+      <div class="toggles" role="radiogroup" aria-label="Scenario">
+        <label class="chip"><input type="radio" name="scen" id="scenTree" value="tree" checked> Student and a tree</label>
+        <label class="chip"><input type="radio" name="scen" id="scenPeople" value="people"> Two students</label>
+      </div>
+      <div class="toggles">
+        <button id="snapBtn" type="button" class="primary">Move to the right spot</button>
+        <label class="chip"><input type="checkbox" id="mLabelsToggle" checked> Labels</label>
+      </div>
+    </div>
+
+    <div class="scene" id="mSceneWrap">
+      <canvas id="mScene" aria-label="A student looks into a mirror lying on the ground and sees the reflection of a tree top or another student's eyes. The two right triangles on either side of the mirror are similar."></canvas>
+      <div class="hint" id="mHint">Drag a person, the tree or the mirror · drag a ○ handle to change height</div>
+    </div>
+
+    <div class="lower">
+      <section class="panel" aria-labelledby="mTblTitle">
+        <h2 id="mTblTitle">The measurements</h2>
+        <div class="status" id="mStatus" role="status"></div>
+        <div class="table-scroll">
+          <table class="narrow">
+            <thead><tr><th>Measurement</th><th class="num">Value</th></tr></thead>
+            <tbody id="mRows"></tbody>
+          </table>
+        </div>
+        <div class="solve" id="mSolve"></div>
+        <div class="why">
+          <strong>Why the triangles are similar</strong>
+          <ul>
+            <li>Both triangles have a right angle where the person or tree meets the ground.</li>
+            <li>A mirror reflects light at the same angle it arrives: the angle of incidence equals the angle of reflection. Those are measured from the dashed normal line, so the angles with the ground on each side are equal too.</li>
+            <li>Two pairs of equal angles make the triangles similar (AA), so their sides are proportional: H ÷ d₂ = e ÷ d₁.</li>
+          </ul>
+          <strong>Doing it outside</strong>
+          <ul>
+            <li>Lay the mirror flat and mark a dot in its center. Measure all distances to that dot.</li>
+            <li>Use your eye height, not your full height.</li>
+            <li>Step forward or back until the top sits right on the dot, then measure.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="panel graph" aria-labelledby="mGraphTitle">
+        <h2 id="mGraphTitle">Flip one triangle over the mirror</h2>
+        <p class="legend">Both triangles are drawn with their mirror corner at the same point, so the student's triangle is flipped over onto the other side. When the top lines up in the mirror, the angles match and the small triangle fits exactly inside the big one.</p>
+        <canvas id="mGraph" aria-label="Both triangles drawn from the mirror corner. When lined up, the eye point sits on the big triangle's slanted side."></canvas>
+      </section>
+    </div>
+  </section>
 </div>
 
 <script>
 (() => {
   const DEG = Math.PI / 180;
+  const shared = { units: "imperial" };
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const state = {
     theta: 35,
-    units: "imperial",
     measuring: false,
     solve: false,
     revealed: false,
@@ -341,7 +431,7 @@ td.num, th.num { text-align: right; }
   // ---------- helpers ----------
   const tanT = () => Math.tan(state.theta * DEG);
   const shadowOf = o => o.h / tanT();
-  const unitFt = () => state.units === "imperial" ? 1 / 12 : 0.0328084; // 1 inch or 1 cm, in feet
+  const unitFt = () => shared.units === "imperial" ? 1 / 12 : 0.0328084; // 1 inch or 1 cm, in feet
   function measured(o) {
     const s = shadowOf(o);
     if (!state.measuring) return { h: o.h, s };
@@ -352,9 +442,9 @@ td.num, th.num { text-align: right; }
     return { h: hm, s: sm };
   }
   function fmt(ft) {
-    if (state.units === "imperial") {
+    if (shared.units === "imperial") {
       const tot = Math.round(ft * 12);
-      return `${Math.floor(tot / 12)}′ ${tot % 12}″`;
+      return tot < 12 ? `${tot}″` : `${Math.floor(tot / 12)}′ ${tot % 12}″`;
     }
     const m = ft * 0.3048;
     return m < 10 ? `${m.toFixed(2)} m` : `${m.toFixed(1)} m`;
@@ -371,8 +461,10 @@ td.num, th.num { text-align: right; }
     T = {
       skyTop: g("--sky-top"), skyBottom: g("--sky-bottom"), ground: g("--ground"), groundEdge: g("--ground-edge"),
       shadow: g("--shadow"), sun: g("--sun"), ray: g("--ray"), halo: g("--halo"), ink: g("--ink"),
-      muted: g("--muted"), line: g("--line"), surface: g("--surface"), good: g("--good"),
+      muted: g("--muted"), line: g("--line"), surface: g("--surface"), good: g("--good"), warn: g("--warn"),
+      mirror: g("--mirror"), mirrorEdge: g("--mirror-edge"), tree: g("--tree"), trunk: g("--trunk"),
     };
+    ["--c1", "--c2", "--c3", "--c4"].forEach(n => { T[n] = g(n); });
     state.objs.forEach(o => { o.col = g(o.color); });
   }
   readTokens();
@@ -398,6 +490,7 @@ td.num, th.num { text-align: right; }
   const graphEl = document.getElementById("graph");
   let S = null, G = null;
   function resize() {
+    if (!sceneEl.parentElement.clientWidth) return;
     S = fitCanvas(sceneEl, 0.5, 340, 580);
     G = fitCanvas(graphEl, 0.78, 280, 520);
   }
@@ -636,8 +729,8 @@ td.num, th.num { text-align: right; }
     const pw = W - ml - mr, ph = H - mt - mb;
     const data = state.objs.map(o => ({ o, m: measured(o) }));
     // display units for axes
-    const toU = state.units === "imperial" ? v => v : v => v * 0.3048;
-    const uName = state.units === "imperial" ? "ft" : "m";
+    const toU = shared.units === "imperial" ? v => v : v => v * 0.3048;
+    const uName = shared.units === "imperial" ? "ft" : "m";
     let maxS = 0, maxH = 0;
     data.forEach(d => { maxS = Math.max(maxS, d.m.s, shadowOf(d.o)); maxH = Math.max(maxH, d.m.h, d.o.h); });
     maxS *= 1.06; maxH *= 1.08;
@@ -648,7 +741,7 @@ td.num, th.num { text-align: right; }
 
     // grid
     const stepU = niceStep(Math.max(toU(pw / sc), toU(ph / sc)), 7);
-    const stepFt = state.units === "imperial" ? stepU : stepU / 0.3048;
+    const stepFt = shared.units === "imperial" ? stepU : stepU / 0.3048;
     ctx.strokeStyle = T.line; ctx.lineWidth = 1;
     ctx.font = `12px ${DATA_FONT}`; ctx.fillStyle = T.muted;
     ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -769,7 +862,7 @@ td.num, th.num { text-align: right; }
         <span>They range from <span class="num">${r3(lo)}</span> to <span class="num">${r3(hi)}</span>, a spread of ${pct}% around the true value <span class="num">${r3(t)}</span>.</span>`;
     }
     document.getElementById("why").hidden = !state.measuring;
-    document.getElementById("roundUnit").textContent = state.units === "imperial" ? "inch" : "centimeter";
+    document.getElementById("roundUnit").textContent = shared.units === "imperial" ? "inch" : "centimeter";
 
     const card = document.getElementById("solveCard");
     card.hidden = !state.solve;
@@ -809,9 +902,10 @@ td.num, th.num { text-align: right; }
   document.getElementById("remeasureBtn").addEventListener("click", () => { reroll(); update(); });
   const unitsBtn = document.getElementById("unitsBtn");
   unitsBtn.addEventListener("click", () => {
-    state.units = state.units === "imperial" ? "metric" : "imperial";
-    unitsBtn.textContent = state.units === "imperial" ? "Units: feet" : "Units: meters";
+    shared.units = shared.units === "imperial" ? "metric" : "imperial";
+    unitsBtn.textContent = shared.units === "imperial" ? "Units: feet" : "Units: meters";
     update();
+    mupdate();
   });
   const playBtn = document.getElementById("playBtn");
   let playStart = 0;
@@ -882,6 +976,367 @@ td.num, th.num { text-align: right; }
   sceneEl.addEventListener("pointercancel", endDrag);
   sceneEl.addEventListener("pointerleave", () => { if (!drag) hover = null; });
 
+  // ---------- tabs ----------
+  const views = { shadows: document.getElementById("view-shadows"), mirror: document.getElementById("view-mirror") };
+  function showView(name) {
+    if (!views[name]) name = "shadows";
+    for (const k in views) {
+      views[k].hidden = k !== name;
+      document.getElementById("tab-" + k).setAttribute("aria-selected", String(k === name));
+    }
+    if (name !== "shadows" && state.playing) playBtn.click();
+  }
+  document.querySelectorAll('[role="tab"]').forEach(b => b.addEventListener("click", () => {
+    const n = b.id.slice(4);
+    try { location.hash = n; } catch (e) { /* ignore */ }
+    showView(n);
+  }));
+  window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+  showView(location.hash.slice(1));
+
+  // ================= Mirror view =================
+  const EYE = 0.925;               // eye height as a fraction of height (matches the drawn figure)
+  const MBAND = 70, MLEFT = 104;
+  const mstate = {
+    scen: "tree", revealed: false, labels: true, snap: null,
+    scenes: {
+      tree: {
+        obs: { name: "Student 1", kind: "person", h: 5 + 2 / 12, x: 1, color: "--c1", min: 3, max: 7 },
+        mirror: { x: 10 },
+        tgt: { name: "Tree", kind: "tree", h: 24, x: 40, color: "--c4", min: 8, max: 60 },
+      },
+      people: {
+        obs: { name: "Student 1", kind: "person", h: 5 + 2 / 12, x: 1, color: "--c1", min: 3, max: 7 },
+        mirror: { x: 8 },
+        tgt: { name: "Student 2", kind: "person", h: 5 + 10 / 12, x: 17, color: "--c2", min: 3, max: 7 },
+      },
+    },
+  };
+  const mcur = () => mstate.scenes[mstate.scen];
+  const targetPt = o => (o.kind === "person" ? o.h * EYE : o.h);
+  function mgeom() {
+    const s = mcur();
+    const e = s.obs.h * EYE, tY = targetPt(s.tgt);
+    const d1 = s.mirror.x - s.obs.x, d2 = s.tgt.x - s.mirror.x;
+    const passY = d1 * tY / d2;    // height of the reflected light when it gets back to the observer
+    const aligned = Math.abs(passY - e) / e < 0.015;
+    return { s, e, tY, d1, d2, passY, aligned, alpha: Math.atan2(tY, d2), beta: Math.atan2(e, d1) };
+  }
+  const deg = r => (r / DEG).toFixed(1);
+  const dec = ft => (shared.units === "imperial" ? `${ft.toFixed(2)} ft` : `${(ft * 0.3048).toFixed(2)} m`);
+
+  const mEl = document.getElementById("mScene"), mgEl = document.getElementById("mGraph");
+  let MS = null, MG = null, mscale = null, mfrozen = null, mhover = null, mdrag = null;
+  function mresize() {
+    if (!mEl.parentElement.clientWidth) return;
+    MS = fitCanvas(mEl, 0.5, 340, 580);
+    MG = fitCanvas(mgEl, 0.78, 280, 520);
+  }
+  new ResizeObserver(mresize).observe(document.getElementById("mSceneWrap"));
+  mresize();
+  function mTargetScale() {
+    const s = mcur();
+    const extra = s.tgt.kind === "tree" ? s.tgt.h * 0.22 : 1;
+    return Math.min((MS.w - MLEFT - 16) / (s.tgt.x + extra + 1), (MS.h - MBAND - 44) / Math.max(s.tgt.h, s.obs.h));
+  }
+  const MX = ft => MLEFT + ft * mscale;
+
+  function drawTree(ctx, bx, gy, hp) {
+    const R = hp * 0.22, top = gy - hp, tw = Math.max(5, hp * 0.06);
+    ctx.fillStyle = T.trunk;
+    ctx.fillRect(bx - tw / 2, top + R, tw, gy - top - R);
+    ctx.fillStyle = T.tree;
+    [[0, 1, 1], [-0.75, 1.55, 0.95], [0.75, 1.55, 0.95], [0, 1.9, 0.95]].forEach(([dx, dy, k]) => {
+      ctx.beginPath(); ctx.arc(bx + dx * R, top + dy * R, R * k, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  function drawMirror() {
+    const ctx = MS.ctx, W = MS.w, H = MS.h, gy = H - MBAND;
+    const g = mgeom(), s = g.s, oc = T[s.obs.color], tc = T[s.tgt.color];
+    const xo = MX(s.obs.x), xm = MX(s.mirror.x), xt = MX(s.tgt.x);
+    const eyeY = gy - g.e * mscale, tgtY = gy - g.tY * mscale;
+
+    const sky = ctx.createLinearGradient(0, 0, 0, gy);
+    sky.addColorStop(0, T.skyTop); sky.addColorStop(1, T.skyBottom);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, gy);
+    ctx.fillStyle = T.ground; ctx.fillRect(0, gy, W, H - gy);
+    ctx.fillStyle = T.groundEdge; ctx.fillRect(0, gy, W, 2);
+
+    const fillTri = (pts, col) => {
+      ctx.fillStyle = col; ctx.globalAlpha = 0.16;
+      ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    };
+    fillTri([[xo, gy], [xo, eyeY], [xm, gy]], oc);
+    fillTri([[xt, gy], [xt, tgtY], [xm, gy]], tc);
+
+    // normal line at the mirror
+    ctx.strokeStyle = T.muted; ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(xm, gy); ctx.lineTo(xm, gy - 70); ctx.stroke(); ctx.setLineDash([]);
+    label(ctx, "normal", xm, gy - 78, T.muted, "center", 11, BODY_FONT);
+
+    // figures
+    drawPerson(ctx, xo, gy, s.obs.h * mscale, oc);
+    if (s.tgt.kind === "tree") drawTree(ctx, xt, gy, s.tgt.h * mscale);
+    else drawPerson(ctx, xt, gy, s.tgt.h * mscale, tc);
+
+    // ground legs + right-angle marks
+    for (const [x, col, dir] of [[xo, oc, 1], [xt, tc, -1]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(xm, gy); ctx.stroke(); ctx.setLineDash([]);
+      const q = 9; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x + dir * q, gy); ctx.lineTo(x + dir * q, gy - q); ctx.lineTo(x, gy - q); ctx.stroke();
+    }
+    if (s.tgt.kind === "tree") {
+      ctx.strokeStyle = tc; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(xt, tgtY); ctx.lineTo(xt, gy); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // glow when the path lines up
+    if (g.aligned) {
+      ctx.strokeStyle = T.good; ctx.globalAlpha = 0.35; ctx.lineWidth = 11; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.beginPath(); ctx.moveTo(xt, tgtY); ctx.lineTo(xm, gy); ctx.lineTo(xo, eyeY); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    // the student's line of sight down to the mirror
+    ctx.strokeStyle = oc; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(xo, eyeY); ctx.lineTo(xm, gy); ctx.stroke();
+    // light from the top: down to the mirror, then reflected at the same angle
+    const a = g.alpha, ca = Math.cos(a), sa = Math.sin(a);
+    const t = Math.min(xm / ca, gy / sa);
+    ctx.strokeStyle = tc; ctx.lineWidth = 2.5; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -dashPhase;
+    ctx.beginPath(); ctx.moveTo(xt, tgtY); ctx.lineTo(xm, gy); ctx.lineTo(xm - ca * t, gy - sa * t); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
+
+    // how far the reflection misses the eye
+    if (!g.aligned) {
+      const py = Math.max(6, gy - g.passY * mscale), bx = xo - 12;
+      ctx.strokeStyle = T.warn; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx, eyeY); ctx.lineTo(bx, py);
+      ctx.moveTo(bx - 5, eyeY); ctx.lineTo(bx + 5, eyeY);
+      ctx.moveTo(bx - 5, py); ctx.lineTo(bx + 5, py);
+      ctx.stroke();
+      ctx.fillStyle = tc; ctx.beginPath(); ctx.arc(xo, py, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // equal angles at the mirror
+    ctx.lineWidth = 2; ctx.strokeStyle = tc;
+    ctx.beginPath(); ctx.arc(xm, gy, 34, -a, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(xm, gy, 34, Math.PI, Math.PI + a); ctx.stroke();
+    if (!g.aligned) {
+      ctx.strokeStyle = oc; ctx.beginPath(); ctx.arc(xm, gy, 24, Math.PI, Math.PI + g.beta); ctx.stroke();
+    }
+    label(ctx, `${deg(a)}°`, xm + 40 * Math.cos(a / 2) + 6, gy - 40 * Math.sin(a / 2) - 6, tc, "left", 12);
+    label(ctx, `${deg(a)}°`, xm - 40 * Math.cos(a / 2) - 6, gy - 40 * Math.sin(a / 2) - 6, tc, "right", 12);
+
+    // the mirror itself
+    ctx.fillStyle = T.mirror; ctx.strokeStyle = T.mirrorEdge; ctx.lineWidth = mhover === "m" ? 2.5 : 1.5;
+    ctx.beginPath(); ctx.roundRect(xm - 16, gy - 3, 32, 6, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = T.surface; ctx.fillRect(xm - 9, gy - 1.5, 7, 1.5);
+    ctx.fillStyle = T.ink; ctx.beginPath(); ctx.arc(xm, gy, 1.8, 0, Math.PI * 2); ctx.fill();
+
+    // eyes
+    const eyes = [[xo, eyeY]];
+    if (s.tgt.kind === "person") eyes.push([xt, tgtY]);
+    for (const [x, y] of eyes) {
+      ctx.fillStyle = T.surface; ctx.beginPath(); ctx.arc(x, y, 3.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = T.ink; ctx.beginPath(); ctx.arc(x, y, 1.9, 0, Math.PI * 2); ctx.fill();
+    }
+    // height handles
+    [["oh", xo, gy - s.obs.h * mscale, oc], ["th", xt, gy - s.tgt.h * mscale, tc]].forEach(([k, x, y, c]) => {
+      ctx.beginPath(); ctx.arc(x, y, mhover === k ? 9 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = T.surface; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = c; ctx.stroke();
+    });
+
+    if (mstate.labels) {
+      label(ctx, `eye ${fmt(g.e)}`, xo - 22, (eyeY + gy) / 2, oc, "right", 13);
+      const hidden = !mstate.revealed;
+      const tl = s.tgt.kind === "tree" ? (hidden ? "H = ?" : fmt(g.tY)) : (hidden ? "eye ?" : `eye ${fmt(g.tY)}`);
+      const ty = gy - g.tY * mscale * 0.3;
+      if (xt + 90 < W) label(ctx, tl, xt + 14, ty, tc, "left", 13);
+      else label(ctx, tl, xt - 12, ty, tc, "right", 13);
+      const dim = (x1, x2, y, col, text) => {
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y); ctx.lineTo(x2, y);
+        ctx.moveTo(x1, y - 5); ctx.lineTo(x1, y + 5);
+        ctx.moveTo(x2, y - 5); ctx.lineTo(x2, y + 5);
+        ctx.stroke();
+        label(ctx, text, (x1 + x2) / 2, y, col, "center", 12);
+      };
+      dim(xo, xm, gy + 38, oc, `d₁ ${fmt(g.d1)}`);
+      dim(xm, xt, gy + 38, tc, `d₂ ${fmt(g.d2)}`);
+    }
+  }
+
+  function drawMirrorGraph() {
+    const ctx = MG.ctx, W = MG.w, H = MG.h;
+    ctx.clearRect(0, 0, W, H);
+    const g = mgeom(), s = g.s, oc = T[s.obs.color], tc = T[s.tgt.color];
+    const ml = 54, mb = 40, mt = 14, mr = 16, pw = W - ml - mr, ph = H - mt - mb;
+    const toU = shared.units === "imperial" ? v => v : v => v * 0.3048;
+    const uName = shared.units === "imperial" ? "ft" : "m";
+    const maxS = Math.max(g.d1, g.d2) * 1.08, maxH = Math.max(g.e, g.tY) * 1.12;
+    const sc = Math.min(pw / maxS, ph / maxH);
+    const ox = ml, oy = mt + ph, px = v => ox + v * sc, py = v => oy - v * sc, xEnd = ml + pw, yEnd = mt;
+
+    const stepU = niceStep(Math.max(toU(pw / sc), toU(ph / sc)), 7);
+    const stepFt = shared.units === "imperial" ? stepU : stepU / 0.3048;
+    ctx.strokeStyle = T.line; ctx.lineWidth = 1;
+    ctx.font = `12px ${DATA_FONT}`; ctx.fillStyle = T.muted;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let v = 0; px(v) <= xEnd + 0.5; v += stepFt) {
+      ctx.beginPath(); ctx.moveTo(px(v), oy); ctx.lineTo(px(v), yEnd); ctx.stroke();
+      ctx.fillText(+toU(v).toFixed(2) + "", px(v), oy + 6);
+    }
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (let v = 0; py(v) >= yEnd - 0.5; v += stepFt) {
+      ctx.beginPath(); ctx.moveTo(ox, py(v)); ctx.lineTo(xEnd, py(v)); ctx.stroke();
+      ctx.fillText(+toU(v).toFixed(2) + "", ox - 8, py(v));
+    }
+    ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(ox, yEnd); ctx.lineTo(ox, oy); ctx.lineTo(xEnd, oy); ctx.stroke();
+    ctx.font = `600 12px ${BODY_FONT}`; ctx.fillStyle = T.muted;
+    ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+    ctx.fillText(`distance from the mirror (${uName}) →`, xEnd, H - 2);
+    ctx.save(); ctx.translate(14, mt); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(`height (${uName}) →`, 0, 0); ctx.restore();
+
+    const tris = [
+      { d: g.d2, h: g.tY, col: tc },
+      { d: g.d1, h: g.e, col: oc },
+    ].sort((p, q) => q.d * q.h - p.d * p.h);
+    for (const tr of tris) {
+      ctx.fillStyle = tr.col; ctx.globalAlpha = 0.15;
+      ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(tr.d), py(0)); ctx.lineTo(px(tr.d), py(tr.h)); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = tr.col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(tr.d), py(tr.h)); ctx.lineTo(px(tr.d), py(0)); ctx.stroke();
+    }
+    // extend the light's line
+    const slope = g.tY / g.d2, xMax = Math.min(maxS, maxH / slope);
+    ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(xMax), py(xMax * slope)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = tc; ctx.beginPath(); ctx.arc(px(0), py(0), 36, -g.alpha, 0); ctx.stroke();
+    ctx.strokeStyle = oc; ctx.beginPath(); ctx.arc(px(0), py(0), 26, -g.beta, 0); ctx.stroke();
+    for (const tr of tris) {
+      ctx.fillStyle = tr.col; ctx.beginPath(); ctx.arc(px(tr.d), py(tr.h), 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = T.surface; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const lines = [
+      [tc, s.tgt.kind === "tree" ? "Tree's triangle" : `${s.tgt.name}'s triangle`],
+      [oc, `${s.obs.name}'s triangle (flipped)`],
+      [g.aligned ? T.good : T.warn, g.aligned ? "Angles match: similar" : "Angles don't match yet"],
+    ];
+    lines.forEach(([c, text], i) => {
+      const lx = ox + 14, ly = yEnd + 12 + i * 18;
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI * 2); ctx.fill();
+      label(ctx, text, lx + 10, ly, i === 2 ? c : T.ink, "left", 12, BODY_FONT);
+    });
+  }
+
+  function mupdate() {
+    const g = mgeom(), s = g.s, isTree = s.tgt.kind === "tree";
+    const tWhat = isTree ? "the top of the tree" : `${s.tgt.name}'s eyes`;
+    const st = document.getElementById("mStatus");
+    st.dataset.state = g.aligned ? "good" : "bad";
+    if (g.aligned) {
+      st.innerHTML = `<strong>✓ ${s.obs.name} can see ${tWhat} in the mirror.</strong>
+        <span>The light bounces off the mirror at ${deg(g.alpha)}°, the same angle as ${s.obs.name}'s line of sight, so the two triangles are similar.</span>`;
+    } else {
+      const diff = g.passY - g.e;
+      st.innerHTML = `<strong>Not lined up yet.</strong>
+        <span>The reflection of ${tWhat} passes ${fmt(Math.abs(diff))} ${diff > 0 ? "above" : "below"} ${s.obs.name}'s eyes, so they see a spot ${diff > 0 ? "lower down" : "higher up"} instead. ${diff > 0 ? "Step closer to the mirror" : "Step back from the mirror"}, or press “Move to the right spot”.</span>`;
+    }
+    const tLabel = isTree ? "tree" : s.tgt.name;
+    const rows = [
+      [s.obs.color, `${s.obs.name}'s eye height <em>e</em>`, fmt(g.e)],
+      [s.obs.color, `${s.obs.name} to mirror <em>d₁</em>`, fmt(g.d1)],
+      [s.tgt.color, `Mirror to ${tLabel} <em>d₂</em>`, fmt(g.d2)],
+      [s.tgt.color, isTree ? "Tree height <em>H</em>" : `${s.tgt.name}'s eye height <em>H</em>`, mstate.revealed ? fmt(g.tY) : "?"],
+    ];
+    document.getElementById("mRows").innerHTML = rows.map(([c, a, b]) =>
+      `<tr><td><div class="who"><span class="swatch" style="background:var(${c})"></span><span>${a}</span></div></td><td class="num ratio">${b}</td></tr>`).join("");
+
+    const est = g.e * g.d2 / g.d1;
+    const err = Math.abs(est - g.tY);
+    const card = document.getElementById("mSolve");
+    card.innerHTML = `
+      <h2>Solve for ${isTree ? "the tree's height" : `${s.tgt.name}'s eye height`}</h2>
+      <div class="eq">
+        <div>H ÷ d₂ = e ÷ d₁</div>
+        <div>H = e × d₂ ÷ d₁</div>
+        <div>H = ${dec(g.e)} × ${dec(g.d2)} ÷ ${dec(g.d1)}</div>
+      </div>
+      <div class="result">H ≈ ${fmt(est)}</div>
+      ${isTree ? "" : `<p>That's the height of ${s.tgt.name}'s eyes. The top of their head is a few inches higher, so they're about <strong class="num">${fmt(est / EYE)}</strong> tall.</p>`}
+      ${g.aligned ? "" : `<p class="warn-text">${s.obs.name} can't see ${tWhat} in the mirror yet, so these triangles aren't similar and this answer is off.</p>`}
+      ${mstate.revealed ? `<p>Actual: <strong class="num">${fmt(g.tY)}</strong>${isTree ? "" : ` (full height ${fmt(s.tgt.h)})`}. ${err < unitFt() ? "Spot on." : `Off by ${fmt(err)} (${(err / g.tY * 100).toFixed(1)}%).`}</p>` : ""}
+      <div class="row"><button type="button" id="mRevealBtn" class="${mstate.revealed ? "" : "primary"}">${mstate.revealed ? "Hide the answer" : "Reveal the actual height"}</button></div>`;
+    card.querySelector("#mRevealBtn").addEventListener("click", () => { mstate.revealed = !mstate.revealed; mupdate(); });
+  }
+
+  document.querySelectorAll('input[name="scen"]').forEach(r => r.addEventListener("change", () => {
+    mstate.scen = r.value; mstate.revealed = false; mstate.snap = null; mscale = null; mupdate();
+  }));
+  document.getElementById("mLabelsToggle").addEventListener("change", e => { mstate.labels = e.target.checked; });
+  document.getElementById("snapBtn").addEventListener("click", () => {
+    const g = mgeom(), s = g.s;
+    const want = s.mirror.x - g.e * g.d2 / g.tY;
+    if (want >= 0) mstate.snap = { obj: s.obs, to: want };
+    else mstate.snap = { obj: s.mirror, to: (g.e * s.tgt.x + g.tY * s.obs.x) / (g.e + g.tY) };
+  });
+
+  function mHit(px, py) {
+    const s = mcur(), gy = MS.h - MBAND;
+    const xo = MX(s.obs.x), xm = MX(s.mirror.x), xt = MX(s.tgt.x);
+    const oH = s.obs.h * mscale, tH = s.tgt.h * mscale;
+    if (Math.hypot(px - xo, py - (gy - oH)) < 16) return { type: "oh" };
+    if (Math.hypot(px - xt, py - (gy - tH)) < 16) return { type: "th" };
+    if (Math.abs(px - xm) < 22 && Math.abs(py - gy) < 18) return { type: "m", off: (px - xm) / mscale };
+    if (Math.abs(px - xo) < Math.max(14, oH * 0.14) && py <= gy + 4 && py >= gy - oH) return { type: "o", off: (px - xo) / mscale };
+    const tw = s.tgt.kind === "tree" ? tH * 0.25 : Math.max(14, tH * 0.14);
+    if (Math.abs(px - xt) < tw && py <= gy + 4 && py >= gy - tH) return { type: "t", off: (px - xt) / mscale };
+    return null;
+  }
+  function mpos(e) { const r = mEl.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  mEl.addEventListener("pointerdown", e => {
+    const [px, py] = mpos(e);
+    const h = mHit(px, py);
+    if (!h) return;
+    mdrag = h; mfrozen = mscale; mstate.snap = null;
+    mEl.setPointerCapture(e.pointerId);
+    document.getElementById("mHint").hidden = true;
+    e.preventDefault();
+  });
+  mEl.addEventListener("pointermove", e => {
+    const [px, py] = mpos(e);
+    if (!mdrag) {
+      const h = mHit(px, py);
+      mhover = h ? h.type : null;
+      mEl.style.cursor = !h ? "default" : h.type.endsWith("h") ? "ns-resize" : "ew-resize";
+      return;
+    }
+    const s = mcur(), gy = MS.h - MBAND, u = unitFt();
+    const snap = v => Math.round(v / u) * u;
+    const ft = (px - MLEFT) / mscale;
+    const hft = snap((gy - py) / mscale);
+    if (mdrag.type === "oh") s.obs.h = clamp(hft, s.obs.min, s.obs.max);
+    else if (mdrag.type === "th") s.tgt.h = clamp(hft, s.tgt.min, s.tgt.max);
+    else if (mdrag.type === "o") s.obs.x = clamp(snap(ft - mdrag.off), 0, s.mirror.x - 0.5);
+    else if (mdrag.type === "m") s.mirror.x = clamp(snap(ft - mdrag.off), s.obs.x + 0.5, s.tgt.x - 0.5);
+    else if (mdrag.type === "t") s.tgt.x = clamp(snap(ft - mdrag.off), s.mirror.x + 0.5, 200);
+    mupdate();
+  });
+  const mEnd = () => { mdrag = null; mfrozen = null; };
+  mEl.addEventListener("pointerup", mEnd);
+  mEl.addEventListener("pointercancel", mEnd);
+  mEl.addEventListener("pointerleave", () => { if (!mdrag) mhover = null; });
+  mupdate();
+
   // ---------- main loop ----------
   function frame(now) {
     if (state.playing) {
@@ -889,11 +1344,24 @@ td.num, th.num { text-align: right; }
       const th = Math.round(15 + 65 * (1 - Math.cos(ph)) / 2);
       if (th !== state.theta) { state.theta = th; sunIn.value = th; update(false); }
     }
-    const tgt = frozenScale ?? targetScale();
-    scale = scale == null ? tgt : scale + (tgt - scale) * 0.12;
     if (!reduceMotion) dashPhase = (dashPhase + 0.6) % 18;
-    drawScene();
-    drawGraph();
+    if (!views.shadows.hidden && S && S.w) {
+      const tgt = frozenScale ?? targetScale();
+      scale = scale == null ? tgt : scale + (tgt - scale) * 0.12;
+      drawScene();
+      drawGraph();
+    }
+    if (!views.mirror.hidden && MS && MS.w) {
+      if (mstate.snap) {
+        const sn = mstate.snap, dx = sn.to - sn.obj.x;
+        if (reduceMotion || Math.abs(dx) < 0.01) { sn.obj.x = sn.to; mstate.snap = null; } else sn.obj.x += dx * 0.12;
+        mupdate();
+      }
+      const tg = mfrozen ?? mTargetScale();
+      mscale = mscale == null ? tg : mscale + (tg - mscale) * 0.12;
+      drawMirror();
+      drawMirrorGraph();
+    }
     requestAnimationFrame(frame);
   }
   update();
